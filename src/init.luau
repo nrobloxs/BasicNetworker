@@ -1,10 +1,8 @@
-local NetworkClient = require(script.NetworkClient)
-local NetworkServer = require(script.NetworkServer)
-local server = NetworkServer
-local client = NetworkClient
+local server = require(script.NetworkServer)
+local client = require(script.NetworkClient)
 
-export type Server = NetworkServer.NetworkServer
-export type Client = NetworkClient.NetworkClient
+export type Server = server.NetworkServer
+export type Client = client.NetworkClient
 
 return {
 	server = server,
