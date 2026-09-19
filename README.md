@@ -14,4 +14,35 @@ Next, open `BasicNetworker.rbxlx` in Roblox Studio and start the Rojo server:
 rojo serve
 ```
 
+## Listening and responding
+
+Remote events and functions have matching client/server APIs:
+
+```lua
+-- Server
+server:ListenClientAsync("Event", function(player, ...)
+	-- Handle a client event. player is the sender.
+end)
+
+local stop = server:RespondClientSync("Function", function(player, ...)
+	-- Return values are sent back to the calling client.
+	return true
+end)
+
+-- Client
+client:ListenServerAsync("Event", function(...)
+	-- Handle a server event.
+end)
+
+local stop = client:RespondServerSync("Function", function(...)
+	return true
+end)
+```
+
+`ListenClientAsync` and `ListenServerAsync` return an `RBXScriptConnection`; call
+`:Disconnect()` to stop listening. The function responder methods return cleanup
+functions. Bindable domains use the same cleanup pattern through
+`ListenInDomain` and `RegisterInDomain`, and each BindableEvent listener runs
+once per fire.
+
 For more help, check out [the Rojo documentation](https://rojo.space/docs).

@@ -12,7 +12,6 @@ NetworkServer.__index = NetworkServer
 export type NetworkServer = typeof(setmetatable(
 	{} :: {
 		_Groups: NetworkUtils.GroupMap,
-		_Domains: NetworkUtils.DomainMap,
 	},
 	NetworkServer
 ))
@@ -20,7 +19,6 @@ export type NetworkServer = typeof(setmetatable(
 function NetworkServer.new()
 	local self = setmetatable({
 		_Groups = {},
-		_Domains = {},
 	}, NetworkServer)
 
 	Players.PlayerRemoving:Connect(function(player)
@@ -59,6 +57,22 @@ function NetworkServer.FireAllClientsAsync(self: NetworkServer, Name: string, ..
 	obj:FireAllClients(...)
 end
 
+-- Client -> server event listener. The player is passed as the first callback argument.
+function NetworkServer.ListenClientAsync(
+	self: NetworkServer,
+	Name: string,
+	cb: (player: Player, ...any) -> ()
+): RBXScriptConnection?
+	if self == nil then
+		return nil
+	end
+	local obj = NetworkObjManager:GetOrCreateNetObj(Name, "RemoteEvent") :: RemoteEvent
+	if not obj then
+		return nil
+	end
+	return obj.OnServerEvent:Connect(cb)
+end
+
 -- Server -> single client, synchronous. Client registers its handler via
 -- NetworkClient:RespondServerSync(Name, cb). Timeout-guarded.
 function NetworkServer.FireClientSync(
@@ -76,6 +90,29 @@ function NetworkServer.FireClientSync(
 		return false
 	end
 	return NetworkUtils.InvokeWithTimeout(obj, timeout or DEFAULT_TIMEOUT, player, ...)
+end
+
+-- Client -> server function responder. The player is passed as the first callback argument.
+function NetworkServer.RespondClientSync(
+	self: NetworkServer,
+	Name: string,
+	cb: (player: Player, ...any) -> ...any
+): (() -> ())?
+	if self == nil then
+		return nil
+	end
+	local obj = NetworkObjManager:GetOrCreateNetObj(Name, "RemoteFunction") :: RemoteFunction
+	if not obj then
+		return nil
+	end
+	local previous = obj.OnServerInvoke
+	obj.OnServerInvoke = cb
+
+	return function()
+		if obj.OnServerInvoke == cb then
+			obj.OnServerInvoke = previous
+		end
+	end
 end
 
 -- Server -> all clients, synchronous. Each client runs on its own thread so one
@@ -175,23 +212,12 @@ function NetworkServer.FireInDomain(self: NetworkServer, Domain: string, ...: an
 end
 
 function NetworkServer.ListenInDomain(self: NetworkServer, Domain: string, cb: NetworkUtils.DomainCallback): () -> ()
-	local listeners: { NetworkUtils.DomainCallback } = self._Domains[Domain]
-	if not listeners then
-		listeners = {}
-		self._Domains[Domain] = listeners
-	end
-	table.insert(listeners, cb)
-
 	local event = NetworkObjManager:GetOrCreateNetObj(GetDomainEventName(Domain), "BindableEvent") :: BindableEvent
 	local connection = event.Event:Connect(function(...)
 		cb(...)
 	end)
 
 	return function()
-		local idx = table.find(listeners, cb)
-		if idx then
-			table.remove(listeners, idx)
-		end
 		connection:Disconnect()
 	end
 end
@@ -203,11 +229,17 @@ function NetworkServer.CallInDomain(self: NetworkServer, Domain: string, ...: an
 	return fn:Invoke(...)
 end
 
-function NetworkServer.RegisterInDomain(self: NetworkServer, Domain: string, cb: (...any) -> ...any)
-	local _ = self
+function NetworkServer.RegisterInDomain(self: NetworkServer, Domain: string, cb: (...any) -> ...any): () -> ()
 	local fn =
 		NetworkObjManager:GetOrCreateNetObj(GetDomainFunctionName(Domain), "BindableFunction") :: BindableFunction
+	local previous = fn.OnInvoke
 	fn.OnInvoke = cb
+
+	return function()
+		if fn.OnInvoke == cb then
+			fn.OnInvoke = previous
+		end
+	end
 end
 
 return NetworkServer

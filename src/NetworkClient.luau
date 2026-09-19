@@ -8,17 +8,10 @@ local DEFAULT_TIMEOUT = 10
 local NetworkClient = {}
 NetworkClient.__index = NetworkClient
 
-export type NetworkClient = typeof(setmetatable(
-	{} :: {
-		_Domains: NetworkUtils.DomainMap,
-	},
-	NetworkClient
-))
+export type NetworkClient = typeof(setmetatable({} :: {}, NetworkClient))
 
 function NetworkClient.new()
-	local self = setmetatable({
-		_Domains = {},
-	}, NetworkClient)
+	local self = setmetatable({}, NetworkClient)
 	return self
 end
 
@@ -55,12 +48,19 @@ end
 	@param Name string
 	@param cb (...any) -> ...any
 ]]
-function NetworkClient.RespondServerSync(_self: NetworkClient, Name: string, cb: (...any) -> ...any)
+function NetworkClient.RespondServerSync(_self: NetworkClient, Name: string, cb: (...any) -> ...any): (() -> ())?
 	local obj = NetworkObjManager:GetOrCreateNetObj(Name, "RemoteFunction") :: RemoteFunction
 	if not obj then
-		return
+		return nil
 	end
+	local previous = obj.OnClientInvoke
 	obj.OnClientInvoke = cb
+
+	return function()
+		if obj.OnClientInvoke == cb then
+			obj.OnClientInvoke = previous
+		end
+	end
 end
 
 --[[
@@ -91,13 +91,6 @@ end
 	@param ... any
 ]]
 function NetworkClient.FireInDomain(self: NetworkClient, Domain: string, ...: any)
-	local listeners = self._Domains[Domain]
-	if listeners then
-		for _, cb in ipairs(listeners) do
-			task.spawn(cb, ...)
-		end
-	end
-
 	local event = NetworkObjManager:GetOrCreateNetObj(GetDomainEventName(Domain), "BindableEvent") :: BindableEvent
 	if event then
 		event:Fire(...)
@@ -111,23 +104,12 @@ end
 	@return () -> ()
 ]]
 function NetworkClient.ListenInDomain(self: NetworkClient, Domain: string, cb: (...any) -> ()): () -> ()
-	local listeners = self._Domains[Domain]
-	if not listeners then
-		listeners = {}
-		self._Domains[Domain] = listeners
-	end
-	table.insert(listeners, cb)
-
 	local event = NetworkObjManager:GetOrCreateNetObj(GetDomainEventName(Domain), "BindableEvent") :: BindableEvent
 	local connection = event.Event:Connect(function(...)
 		cb(...)
 	end)
 
 	return function()
-		local idx = table.find(listeners, cb)
-		if idx then
-			table.remove(listeners, idx)
-		end
 		connection:Disconnect()
 	end
 end
@@ -150,11 +132,17 @@ end
 	@param Domain string
 	@param cb (...any) -> ...any
 ]]
-function NetworkClient.RegisterInDomain(self: NetworkClient, Domain: string, cb: (...any) -> ...any)
-	local _ = self
+function NetworkClient.RegisterInDomain(self: NetworkClient, Domain: string, cb: (...any) -> ...any): () -> ()
 	local fn =
 		NetworkObjManager:GetOrCreateNetObj(GetDomainFunctionName(Domain), "BindableFunction") :: BindableFunction
+	local previous = fn.OnInvoke
 	fn.OnInvoke = cb
+
+	return function()
+		if fn.OnInvoke == cb then
+			fn.OnInvoke = previous
+		end
+	end
 end
 
 return NetworkClient
