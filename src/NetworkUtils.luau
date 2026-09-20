@@ -42,20 +42,21 @@ function NetworkUtils.InvokeWithTimeout(
 	end)
 
 	task.spawn(function()
-		local results
+		local packed
 		if player then
-			results = table.pack(obj:InvokeClient(player, table.unpack(args, 1, args.n)))
+			packed = table.pack(pcall(obj.InvokeClient, obj, player, table.unpack(args, 1, args.n)))
 		else
-			results = table.pack(obj:InvokeServer(table.unpack(args, 1, args.n)))
+			packed = table.pack(pcall(obj.InvokeServer, obj, table.unpack(args, 1, args.n)))
 		end
-
 		if done then
 			return
 		end
 		done = true
-		local ok, err = coroutine.resume(co, true, table.unpack(results, 1, results.n))
-		if not ok then
-			warn(err)
+		local ok = packed[1]
+		if ok then
+			coroutine.resume(co, true, table.unpack(packed, 2, packed.n))
+		else
+			coroutine.resume(co, false, packed[2])
 		end
 	end)
 

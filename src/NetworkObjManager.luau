@@ -21,50 +21,56 @@ local BindableFunctions: Folder
 local BindableEvents: Folder
 
 local function InitiateFolderStructure()
-	if not RunService:IsServer() then
-		return
-	end
+	if RunService:IsServer() then
+		if not NetworkObjContainer then
+			NetworkObjContainer = Instance.new("Folder")
+			NetworkObjContainer.Name = "_networkObjs"
+			NetworkObjContainer.Parent = ReplicatedStorage
+		end
 
-	if not NetworkObjContainer then
-		NetworkObjContainer = Instance.new("Folder")
-		NetworkObjContainer.Name = "_networkObjs"
-		NetworkObjContainer.Parent = ReplicatedStorage
-	end
+		if not Remotes then
+			Remotes = Instance.new("Folder")
+			Remotes.Name = "_remotes"
+			Remotes.Parent = NetworkObjContainer
+		end
 
-	if not Remotes then
-		Remotes = Instance.new("Folder")
-		Remotes.Name = "_remotes"
-		Remotes.Parent = NetworkObjContainer
-	end
+		if not Bindables then
+			Bindables = Instance.new("Folder")
+			Bindables.Name = "_bindables"
+			Bindables.Parent = NetworkObjContainer
+		end
 
-	if not Bindables then
-		Bindables = Instance.new("Folder")
-		Bindables.Name = "_bindables"
-		Bindables.Parent = NetworkObjContainer
-	end
+		if not RemoteFunctions then
+			RemoteFunctions = Instance.new("Folder")
+			RemoteFunctions.Name = "Remote_Functions"
+			RemoteFunctions.Parent = Remotes
+		end
 
-	if not RemoteFunctions then
-		RemoteFunctions = Instance.new("Folder")
-		RemoteFunctions.Name = "Remote_Functions"
-		RemoteFunctions.Parent = Remotes
-	end
+		if not RemoteEvents then
+			RemoteEvents = Instance.new("Folder")
+			RemoteEvents.Name = "Remote_Events"
+			RemoteEvents.Parent = Remotes
+		end
 
-	if not RemoteEvents then
-		RemoteEvents = Instance.new("Folder")
-		RemoteEvents.Name = "Remote_Events"
-		RemoteEvents.Parent = Remotes
-	end
+		if not BindableFunctions then
+			BindableFunctions = Instance.new("Folder")
+			BindableFunctions.Name = "Bindable_Functions"
+			BindableFunctions.Parent = Bindables
+		end
 
-	if not BindableFunctions then
-		BindableFunctions = Instance.new("Folder")
-		BindableFunctions.Name = "Bindable_Functions"
-		BindableFunctions.Parent = Bindables
-	end
-
-	if not BindableEvents then
-		BindableEvents = Instance.new("Folder")
-		BindableEvents.Name = "Bindable_Events"
-		BindableEvents.Parent = Bindables
+		if not BindableEvents then
+			BindableEvents = Instance.new("Folder")
+			BindableEvents.Name = "Bindable_Events"
+			BindableEvents.Parent = Bindables
+		end
+	elseif RunService:IsClient() then
+		NetworkObjContainer = ReplicatedStorage:WaitForChild("_networkObjs") :: Folder
+		Remotes = NetworkObjContainer:WaitForChild("_remotes") :: Folder
+		Bindables = NetworkObjContainer:WaitForChild("_bindables") :: Folder
+		RemoteFunctions = Remotes:WaitForChild("Remote_Functions") :: Folder
+		RemoteEvents = Remotes:WaitForChild("Remote_Events") :: Folder
+		BindableFunctions = Bindables:WaitForChild("Bindable_Functions") :: Folder
+		BindableEvents = Bindables:WaitForChild("Bindable_Events") :: Folder
 	end
 end
 
