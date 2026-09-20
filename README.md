@@ -299,21 +299,3 @@ BasicNetworker is a compact networking utility that abstracts away the boilerpla
 Its main value is clarity and speed: you can define gameplay behaviors in terms of action names and callbacks, while the library handles the underlying object creation, lifecycle, and timeout behavior.
 
 It is not a full multiplayer framework, but it is a useful base layer for building one cleanly and efficiently.
-
----
-
-## Getting started
-
-To build the project with Rojo:
-
-```bash
-rojo build -o "BasicNetworker.rbxlx"
-```
-
-Then open the generated file in Roblox Studio, and run:
-
-```bash
-rojo serve
-```
-
-For more help, see the [Rojo documentation](https://rojo.space/docs).
